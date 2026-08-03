@@ -1,0 +1,60 @@
+These are my notes from learning how to build an OS from scratch.
+
+====
+So in the first part, we gonna use a pre-configured bootloader.
+In this section we gonna use the GRUB bootloader
+
+https://www.gnu.org/software/grub/manual/grub/grub.html
+
+We could use Limine or a custom bootloader. But first we gonna start with GRUB.
+====
+
+
+----
+In this firt part we gonna start by writing HELLO WORLD on a simple kernel.
+
+To start it. We need to tell GRUB how to use our C code.
+
+The first things we need to write is an assembly code that do that.
+Why? because it is the entry point.
+
+the first thing that we create in this file is a multiboot section to `show`
+GRUB that yeah... pls use me use me... or something like that. But generally we need that header
+If we were to use Limine or anything else we would refer to their API documentation but here we just first
+define a section that is a .multiboot
+
+then, We align it on 4 bytes because it is mandatory. That's what we NEED to do.
+and we define doubleword the magic number used in GRUB that is actually 0x1BADB002.
+
+Define Doubleword is actually a keyword to allocate 4 bytes ( 32bits ) in NASM.
+
+GRUB will search for that magic number before doing anything... so that is, logically, the first things we define
+
+Then we proceed to do some checksum.
+
+How? -> it will follow this rules `magic + flags + checksum = 0`
+AND MUST BE LIKE THAT.
+the flags is 0x00, the magic number is yeah... the magic number and the checksum is actually the number that we define doubleword.
+so it will be like checksum = -magic + flags
+We can also dd the flags before doing the checksum
+
+The result must be 0. Either... GRUB will think it is a corrupted file.
+
+
+The next section is the block started by Symbol section.
+What is that ?
+A simple section to auto-initialize everything at 0.
+So let's say I define something inside that section... logically... when we gonna use that it will be auto-0-ed
+
+What will be inside that section?
+We will align 16 bytes... because it is like that... did'nt remember WHY. But pls use the docs if you are not ME.
+We need a stack ( that's fucking logic )
+
+What we gonna do is first define the bottom of the stack... call it anything you want.
+And then reserver 16 Kbyte... or more accuratly 16384.
+
+then initialize the top of the stack...
+
+It is useless to fill the memory manually because those 16384 will be initilize auto because they are in the bss section.
+
+I never tried initializing the top before the bottom but it should work as well.

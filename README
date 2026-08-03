@@ -1,0 +1,92 @@
+These are my notes from learning how to build an OS from scratch.
+
+====
+So in the first part, we gonna use a pre-configured bootloader.
+In this section we gonna use the GRUB bootloader
+
+https://www.gnu.org/software/grub/manual/grub/grub.html
+
+We could use Limine or a custom bootloader. But first we gonna start with GRUB.
+====
+
+
+----
+In this firt part we gonna start by writing HELLO WORLD on a simple kernel.
+
+To start it. We need to tell GRUB how to use our C code.
+
+The first things we need to write is an assembly code that do that.
+Why? because it is the entry point.
+
+the first thing that we create in this file is a multiboot section to `show`
+GRUB that yeah... pls use me use me... or something like that. But generally we need that header
+If we were to use Limine or anything else we would refer to their API documentation but here we just first
+define a section that is a .multiboot
+
+then, We align it on 4 bytes because it is mandatory. That's what we NEED to do.
+and we define doubleword the magic number used in GRUB that is actually 0x1BADB002.
+
+Define Doubleword is actually a keyword to allocate 4 bytes ( 32bits ) in NASM.
+
+GRUB will search for that magic number before doing anything... so that is, logically, the first things we define
+
+Then we proceed to do some checksum.
+
+How? -> it will follow this rules `magic + flags + checksum = 0`
+AND MUST BE LIKE THAT.
+the flags is 0x00, the magic number is yeah... the magic number and the checksum is actually the number that we define doubleword.
+so it will be like checksum = -magic + flags
+We can also dd the flags before doing the checksum
+
+The result must be 0. Either... GRUB will think it is a corrupted file.
+
+
+The next section is the block started by Symbol section.
+What is that ?
+A simple section to auto-initialize everything at 0.
+So let's say I define something inside that section... logically... when we gonna use that it will be auto-0-ed
+
+What will be inside that section?
+We will align 16 bytes... because it is like that... did'nt remember WHY. But pls use the docs if you are not ME.
+We need a stack ( that's fucking logic )
+
+What we gonna do is first define the bottom of the stack... call it anything you want.
+And then reserver 16 Kbyte... or more accuratly 16384.
+
+then initialize the top of the stack...
+
+It is useless to fill the memory manually because those 16384 will be initilize auto because they are in the bss section.
+
+I never tried initializing the top before the bottom but it should work as well.
+
+Then we need a text section. What is that? it is just a section for code... any code SHOULD and WILL be put there.
+define it with global and call it whatever the fuck you want but I recommend using _start
+and also... specify that the function you gonna use is located outise so like in C use extern and specify the main function name.
+
+remember we difened the _start stuff... it is like a function in some other language... what we gonna do here in defining what will happen inside of it.
+inside of it... we gonna to some stuff.
+
+The first things I do is:
+  * initializing the stack pointer to be it tha top of the stack.
+  * NOT USE interuption because we didn't define any ITP yet... or idk what is it called but it will come... so call cli ( clear Interrupt )
+  * call the main C function.
+  * you CAN call halt - to stop the CPU usage. ( like freezing )
+  * you can also jump to the very start of the function using the $ sign... that point to the current address of the stuff we use.
+
+We don't define the main C file yet...
+
+But let's look at the linker ... so we keep hard stuff for later
+
+We define the linker in a .ld file.
+
+We define what is the ENTRY point. by pointing at the _start things.
+We define the SECTIONS ( for memory disposition )
+  * load the kernel at the 1Mo address. ( GRUB will handle it auto so don't do 2Mo, but i'm not sure yet ) ( . = 1M )
+  * use . to point the current memory.
+  * load the multiboot first. and ALIGN 4 byte to it and then load every .multiboot by doing *(.multiboot) to merge every multiboot section of every output file
+  * load the code and ALIGN 4Kilobyte for it. OFC merge.
+  * load the data and merge ( 4Kb too )
+  * load the bss and merge.
+
+We use 4Ko because it is the standar for page memory on x86_64
+!!! it is important for pagination later...
