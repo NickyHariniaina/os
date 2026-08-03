@@ -90,3 +90,112 @@ We define the SECTIONS ( for memory disposition )
 
 We use 4Ko because it is the standar for page memory on x86_64
 !!! it is important for pagination later...
+
+Let's try a minimal main function.
+
+We gonna use VGA ( deprecated ) instead of a framebuffer for now.
+
+First load the video memory as an array of char.
+The video memory is 0xB8000
+
+Change everything to actually be like a char.
+
+HOW?
+loop.
+
+We loop throguh the message until we got a no byte character.
+element are stored as tuple ( kind of ) ... in the video memory.
+
+The first 2 are the message and its color ( still didn't really get this but okey ).
+and the next one is the color ( ofc we use memory )
+
+EACH character takes 2 bytes.
+
+And then we loop with anything, while, for anything... just to not get a return value from the main function.
+
+these are the color code: 0x00 to 0x0F ( search for some docs if you want to exact color )
+and then we use the text + color * 16
+
+Use manipulator to get it and then check online
+
+ALRIGHT... WE CAN NOW TRY PRINTING IT.
+
+This is the command I used before `gcc -m32 -ffreestanding -nostdlib -c main.c -o main.o`
+`nasm -f elf32 boot.asm -o boot.o`
+
+and link it
+`ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel.o`
+
+-----
+
+The next step is to read the multiboot structure.
+
+https://www.gnu.org/software/grub/manual/multiboot/multiboot.html
+
+Any idea of how to access value defined in the boot.asm to be used in the C code?
+
+pushing to a stack with push syntax in assembly.
+
+We need the magic number and the address of the multiboot structure.
+The register we push ? EBX for the address and EAX for the magic number.
+
+We may need the magic number in C to manually check if GRUB actually pass the correct structur by checking if THAT is the correct magic number 0x1BADB002
+
+REMEMBER that we use a stack .... so It followes a LIFO mode operation.
+
+The next change is in the C code.
++++++
+
+First define the multiboot structure. Guess the C datatype?
+
+Change the manual assignation of the VGA memory video to actually just BE a macro.
+same for the screen COLS, and ROWS
+maybe same for DEFAULT COLOR
+
+keep track of the cursor location... for x and y.
+
+
+First We need to clear the screen.
+just change every 2bytes to be a ' '
+and the next (+1) to be the color hex
+loop through every place using the row and the cols.
+
+and then... RESET the cursor...
+
+That's how we gonna reset the screen.
+
+Reset that screen before checking for the magic number.
+
+then print some stuff... you can print the address... but you must format the hexadecimal.
+
+That is... the multiboot structure sholud contains the next things:
+flags, mem_lower, mem_upper, boot_device, cmdline, mods_count, mods_addr FOR NOW
+
+
+Let's first start by checking if the memory field are valid:
+HOW ?
+first do an AND bit operation on the flags and the shifted 1 by 0 to the left.
+if it is true: then print the lower memory
+second, do an AND bit operatino on the flags and the shefted 1 by 1 to the left
+if it is true: then print the upper memory
+
+Now try to calculate the total amount of memory: by adding both of them and then multiply by
+1024 to get the answer if Byte and not KiloBytes
+
+Now let's try to print the loaded module.
+If can check if any modules is loaded by using the bit AND operation again but this timeswith the 3 to shift the 1
+
+Now we can test it with this command
+```
+# Assembleur
+nasm -f elf32 boot.asm -o boot.o
+
+# C
+gcc -m32 -ffreestanding -nostdlib -c kernel.c -o kernel.o
+
+# Liaison
+ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel.o
+
+# Test avec QEMU
+qemu-system-i386 -kernel kernel.elf -m 64
+```

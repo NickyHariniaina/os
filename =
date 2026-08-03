@@ -58,3 +58,103 @@ then initialize the top of the stack...
 It is useless to fill the memory manually because those 16384 will be initilize auto because they are in the bss section.
 
 I never tried initializing the top before the bottom but it should work as well.
+
+Then we need a text section. What is that? it is just a section for code... any code SHOULD and WILL be put there.
+define it with global and call it whatever the fuck you want but I recommend using _start
+and also... specify that the function you gonna use is located outise so like in C use extern and specify the main function name.
+
+remember we difened the _start stuff... it is like a function in some other language... what we gonna do here in defining what will happen inside of it.
+inside of it... we gonna to some stuff.
+
+The first things I do is:
+  * initializing the stack pointer to be it tha top of the stack.
+  * NOT USE interuption because we didn't define any ITP yet... or idk what is it called but it will come... so call cli ( clear Interrupt )
+  * call the main C function.
+  * you CAN call halt - to stop the CPU usage. ( like freezing )
+  * you can also jump to the very start of the function using the $ sign... that point to the current address of the stuff we use.
+
+We don't define the main C file yet...
+
+But let's look at the linker ... so we keep hard stuff for later
+
+We define the linker in a .ld file.
+
+We define what is the ENTRY point. by pointing at the _start things.
+We define the SECTIONS ( for memory disposition )
+  * load the kernel at the 1Mo address. ( GRUB will handle it auto so don't do 2Mo, but i'm not sure yet ) ( . = 1M )
+  * use . to point the current memory.
+  * load the multiboot first. and ALIGN 4 byte to it and then load every .multiboot by doing *(.multiboot) to merge every multiboot section of every output file
+  * load the code and ALIGN 4Kilobyte for it. OFC merge.
+  * load the data and merge ( 4Kb too )
+  * load the bss and merge.
+
+We use 4Ko because it is the standar for page memory on x86_64
+!!! it is important for pagination later...
+
+Let's try a minimal main function.
+
+We gonna use VGA ( deprecated ) instead of a framebuffer for now.
+
+First load the video memory as an array of char.
+The video memory is 0xB8000
+
+Change everything to actually be like a char.
+
+HOW?
+loop.
+
+We loop throguh the message until we got a no byte character.
+element are stored as tuple ( kind of ) ... in the video memory.
+
+The first 2 are the message and its color ( still didn't really get this but okey ).
+and the next one is the color ( ofc we use memory )
+
+EACH character takes 2 bytes.
+
+And then we loop with anything, while, for anything... just to not get a return value from the main function.
+
+these are the color code: 0x00 to 0x0F ( search for some docs if you want to exact color )
+and then we use the text + color * 16
+
+Use manipulator to get it and then check online
+
+ALRIGHT... WE CAN NOW TRY PRINTING IT.
+
+This is the command I used before `gcc -m32 -ffreestanding -nostdlib -c main.c -o main.o`
+`nasm -f elf32 boot.asm -o boot.o`
+
+and link it
+`ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel.o`
+
+-----
+
+The next step is to read the multiboot structure.
+
+https://www.gnu.org/software/grub/manual/multiboot/multiboot.html
+
+Any idea of how to access value defined in the boot.asm to be used in the C code?
+
+pushing to a stack with push syntax in assembly.
+
+We need the magic number and the address of the multiboot structure.
+The register we push ? EBX for the address and EAX for the magic number.
+
+We may need the magic number in C to manually check if GRUB actually pass the correct structur by checking if THAT is the correct magic number 0x1BADB002
+
+REMEMBER that we use a stack .... so It followes a LIFO mode operation.
+
+The next change is in the C code.
++++++
+
+First define the multiboot structure. Guess the C datatype?
+
+Change the manual assignation of the VGA memory video to actually just BE a macro.
+same for the screen COLS, and ROWS
+maybe same for DEFAULT COLOR
+
+keep track of the cursor location... for x and y.
+
+
+First We need to clear the screen.
+just change every 2bytes to be a ' '
+loop through every place using the row and the cols.
