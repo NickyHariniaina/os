@@ -187,15 +187,8 @@ If can check if any modules is loaded by using the bit AND operation again but t
 
 Now we can test it with this command
 ```
-# Assembleur
 nasm -f elf32 boot.asm -o boot.o
-
-# C
 gcc -m32 -ffreestanding -nostdlib -c kernel.c -o kernel.o
-
-# Liaison
 ld -m elf_i386 -T linker.ld -o kernel.elf boot.o kernel.o
-
-# Test avec QEMU
 qemu-system-i386 -kernel kernel.elf -m 64
 ```
